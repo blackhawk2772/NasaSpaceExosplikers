@@ -176,6 +176,10 @@ def index():
         truncated = len(dataframe) > MAX_ROWS
         display_df = dataframe.head(MAX_ROWS)
 
+        dedupe_keys = [col for col in ('pl_name', 'hostname', 'k2_name') if col in display_df.columns]
+        if dedupe_keys:
+            display_df = display_df.drop_duplicates(subset=dedupe_keys, keep='first')
+
         table_columns, table_data = build_table(display_df)
         visual_payload = build_visual_payload(display_df)
 
@@ -199,4 +203,5 @@ def download_processed(filename: str):
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 
