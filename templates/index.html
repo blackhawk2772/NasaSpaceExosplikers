@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js" defer></script>
     <script>
-        const PLANETS_PAYLOAD = {{ visual_payload | safe }};
+        window.PLANETS_PAYLOAD = {{ visual_payload | safe }};
     </script>
     <script src="{{ url_for('static', filename='js/planet.js') }}" defer></script>
 </head>
@@ -92,3 +92,4 @@
     </main>
 </body>
 </html>
+
