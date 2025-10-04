@@ -111,12 +111,25 @@ body {
 
 .results-layout {
     display: flex;
-    flex-direction: column;
     gap: 2rem;
+    align-items: flex-start;
 }
 
 .table-panel {
-    overflow-x: auto;
+    flex: 1.7;
+    max-height: 70vh;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+    scrollbar-width: thin;
+}
+
+.table-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+.table-panel::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.35);
+    border-radius: 999px;
 }
 
 table {
@@ -151,6 +164,11 @@ tbody tr:hover {
 }
 
 .visual-panel {
+    flex: 1;
+    min-width: 320px;
+    position: sticky;
+    top: 2rem;
+    align-self: flex-start;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -158,14 +176,12 @@ tbody tr:hover {
 }
 
 #planet-viewer {
-    --viewer-core: rgba(59, 130, 246, 0.18);
-    --viewer-halo: rgba(56, 189, 248, 0.35);
     width: 320px;
     height: 320px;
     border-radius: 12px;
-    background: radial-gradient(circle at center, var(--viewer-core), rgba(14, 24, 52, 0.55));
+    background: radial-gradient(circle at center, rgba(59, 130, 246, 0.18), rgba(14, 24, 52, 0.55));
     position: relative;
-    box-shadow: 0 0 40px var(--viewer-halo);
+    box-shadow: 0 0 40px rgba(56, 189, 248, 0.35);
     transition: box-shadow 0.3s ease, background 0.3s ease;
 }
 
@@ -193,25 +209,22 @@ tbody tr:hover {
     font-size: 1rem;
 }
 
-@media (min-width: 960px) {
+@media (max-width: 960px) {
     .results-layout {
-        flex-direction: row;
-        align-items: flex-start;
+        flex-direction: column;
     }
 
     .table-panel {
-        flex: 1.6;
+        max-height: none;
+        padding-right: 0;
     }
 
     .visual-panel {
-        flex: 1;
-    }
-}
-
-@media (max-width: 640px) {
-    #planet-viewer {
+        position: relative;
+        top: auto;
+        min-width: 0;
         width: 100%;
-        height: 260px;
+        margin-top: 1.5rem;
     }
 
     .planet-details {
