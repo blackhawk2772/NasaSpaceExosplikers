@@ -1,0 +1,94 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Observatorio de Exoplanetas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js" defer></script>
+    <script>
+        const PLANETS_PAYLOAD = {{ visual_payload | safe }};
+    </script>
+    <script src="{{ url_for('static', filename='js/planet.js') }}" defer></script>
+</head>
+<body>
+    <main class="container">
+        <header class="hero">
+            <h1>Observatorio de Exoplanetas</h1>
+            <p>Sube un archivo CSV, ejecutaremos los modelos y mostraremos los planetas detectados junto con una visualizacion 3D.</p>
+        </header>
+
+        <section class="card">
+            <form class="upload-form" method="post" enctype="multipart/form-data">
+                <label for="data_file">Archivo CSV de entrada</label>
+                <input id="data_file" name="data_file" type="file" accept=".csv" required>
+                <button type="submit">Procesar archivo</button>
+            </form>
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <ul class="messages">
+                        {% for message in messages %}
+                            <li>{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+        </section>
+
+        {% if planets %}
+        <section class="results card">
+            <div class="results-header">
+                <h2>Lista de candidatos</h2>
+                <p>Archivo procesado: <strong>{{ processed_file }}</strong></p>
+                {% if processed_file %}
+                    <a class="download-link" href="{{ url_for('download_processed', filename=processed_file) }}">Descargar CSV procesado</a>
+                {% endif %}
+                {% if truncated %}
+                    <p class="note">Mostrando primeros {{ planets|length }} registros (limite {{ max_rows }}). Descarga el CSV para mas detalles.</p>
+                {% endif %}
+            </div>
+            <div class="results-layout">
+                <div class="table-panel">
+                    <table>
+                        <thead>
+                            <tr>
+                                {% for column in table_columns %}
+                                    <th data-key="{{ column.key }}">{{ column.label }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for planet in planets %}
+                                <tr class="planet-row" data-name="{{ planet.get('pl_name', 'Planeta') }}">
+                                    {% for column in table_columns %}
+                                        <td>{{ planet.get(column.key, '') }}</td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="visual-panel">
+                    <h3>Planeta destacado</h3>
+                    <div id="planet-viewer"></div>
+                    <dl class="planet-details">
+                        <div>
+                            <dt>Planeta</dt>
+                            <dd id="planet-name">Selecciona un planeta</dd>
+                        </div>
+                        <div>
+                            <dt>Radio (R_E)</dt>
+                            <dd id="planet-radius">-</dd>
+                        </div>
+                        <div>
+                            <dt>Prediccion</dt>
+                            <dd id="planet-prediction">-</dd>
+                        </div>
+                    </dl>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+    </main>
+</body>
+</html>
