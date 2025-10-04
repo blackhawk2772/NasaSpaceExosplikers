@@ -1,0 +1,272 @@
+﻿(function () {
+    const viewer = document.getElementById("planet-viewer");
+    const nameField = document.getElementById("planet-name");
+    const radiusField = document.getElementById("planet-radius");
+    const predictionField = document.getElementById("planet-prediction");
+    const uncertaintyField = document.getElementById("planet-uncertainty");
+    const rows = Array.from(document.querySelectorAll(".planet-row"));
+    const payload = Array.isArray(window.PLANETS_PAYLOAD) ? window.PLANETS_PAYLOAD : [];
+
+    if (!rows.length) {
+        return;
+    }
+
+    const hasThree = Boolean(viewer && window.THREE);
+
+    let renderer;
+    let camera;
+    let scene;
+    let orbGroup;
+    let sphereWire;
+    let parallels = [];
+    let meridians = [];
+
+    const BASE_RADIUS = 0.88;
+    const EXTRA_LATITUDES = [22, -22, 45, -45, 68, -68];
+    const EXTRA_MERIDIANS = [0, 30, 60, 90, 120, 150];
+
+    let rotationSpeed = 0.01;
+    let targetScale = 1;
+    let currentScale = 1;
+
+    function clamp01(value, fallback) {
+        if (typeof value !== "number" || Number.isNaN(value)) {
+            return fallback;
+        }
+        return Math.min(Math.max(value, 0), 1);
+    }
+
+    function toCssRgba(color, alpha) {
+        const [r, g, b] = color
+            .clone()
+            .multiplyScalar(255)
+            .toArray()
+            .map((v) => Math.min(255, Math.max(0, Math.round(v))));
+        return `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)})`;
+    }
+
+    function buildLatitude(angleDeg, material) {
+        const phi = THREE.MathUtils.degToRad(angleDeg);
+        const radius = BASE_RADIUS * Math.cos(phi);
+        const height = BASE_RADIUS * Math.sin(phi);
+        const curve = new THREE.EllipseCurve(0, 0, radius, radius, 0, Math.PI * 2);
+        const points = curve.getPoints(220).map((p) => new THREE.Vector3(p.x, 0, p.y));
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const loop = new THREE.LineLoop(geometry, material);
+        loop.rotation.x = Math.PI / 2;
+        loop.position.y = height;
+        loop.renderOrder = 1;
+        return loop;
+    }
+
+    function buildMeridian(angleDeg, material) {
+        const lambda = THREE.MathUtils.degToRad(angleDeg);
+        const cosLambda = Math.cos(lambda);
+        const sinLambda = Math.sin(lambda);
+        const points = [];
+        const segments = 240;
+        for (let i = 0; i <= segments; i += 1) {
+            const theta = -Math.PI / 2 + (i / segments) * Math.PI;
+            const cosTheta = Math.cos(theta);
+            const sinTheta = Math.sin(theta);
+            points.push(new THREE.Vector3(
+                BASE_RADIUS * cosTheta * cosLambda,
+                BASE_RADIUS * sinTheta,
+                BASE_RADIUS * cosTheta * sinLambda,
+            ));
+        }
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const line = new THREE.Line(geometry, material);
+        line.renderOrder = 1;
+        return line;
+    }
+
+    function setupScene() {
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(
+            42,
+            viewer.clientWidth / Math.max(viewer.clientHeight, 1),
+            0.1,
+            100,
+        );
+        camera.position.set(0, 0, 4.1);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(viewer.clientWidth, Math.max(viewer.clientHeight, 1));
+        if (renderer.outputColorSpace !== undefined) {
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+        }
+        viewer.appendChild(renderer.domElement);
+
+        const ambient = new THREE.AmbientLight(0xffffff, 0.28);
+        scene.add(ambient);
+        const key = new THREE.DirectionalLight(0xffffff, 1.2);
+        key.position.set(3.4, 3.1, 4.1);
+        scene.add(key);
+        const rim = new THREE.DirectionalLight(0xffffff, 0.45);
+        rim.position.set(-3, -2.4, -4.2);
+        scene.add(rim);
+
+        orbGroup = new THREE.Group();
+        orbGroup.rotation.set(
+            THREE.MathUtils.degToRad(11),
+            THREE.MathUtils.degToRad(-4),
+            THREE.MathUtils.degToRad(6),
+        );
+        scene.add(orbGroup);
+
+        const occluder = new THREE.Mesh(
+            new THREE.SphereGeometry(BASE_RADIUS * 0.985, 64, 48),
+            new THREE.MeshBasicMaterial({ colorWrite: false }),
+        );
+        occluder.renderOrder = 0;
+        orbGroup.add(occluder);
+
+        const mainMaterial = new THREE.LineBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.78,
+            depthWrite: false,
+            depthTest: true,
+        });
+
+        sphereWire = new THREE.LineSegments(
+            new THREE.WireframeGeometry(new THREE.SphereGeometry(BASE_RADIUS * 0.98, 26, 20)),
+            mainMaterial.clone(),
+        );
+        sphereWire.renderOrder = 2;
+        orbGroup.add(sphereWire);
+
+        latitudeMaterial = mainMaterial.clone();
+        latitudeMaterial.opacity = 0.35;
+
+        parallels = EXTRA_LATITUDES.map((deg) => {
+            const loop = buildLatitude(deg, latitudeMaterial.clone());
+            orbGroup.add(loop);
+            return loop;
+        });
+
+        meridians = EXTRA_MERIDIANS.map((deg) => {
+            const line = buildMeridian(deg, latitudeMaterial.clone());
+            orbGroup.add(line);
+            return line;
+        });
+
+        function onResize() {
+            const { clientWidth, clientHeight } = viewer;
+            const height = Math.max(clientHeight, 1);
+            renderer.setSize(clientWidth, height, false);
+            camera.aspect = clientWidth / height;
+            camera.updateProjectionMatrix();
+        }
+
+        window.addEventListener("resize", onResize);
+        onResize();
+
+        function render() {
+            requestAnimationFrame(render);
+            orbGroup.rotation.y += rotationSpeed;
+            currentScale += (targetScale - currentScale) * 0.06;
+            orbGroup.scale.setScalar(currentScale);
+            renderer.render(scene, camera);
+        }
+        render();
+    }
+
+    function updateViewerColors(prediction, uncertainty) {
+        if (!hasThree) {
+            return;
+        }
+
+        const baseGreen = new THREE.Color(0x2ddf85);
+        const baseRed = new THREE.Color(0xff5d5d);
+        const baseColor = (typeof prediction === "number" && prediction >= 0.5) ? baseGreen : baseRed;
+        const uncertaintyValue = clamp01(uncertainty, 0.5);
+
+        const bright = baseColor.clone().lerp(new THREE.Color(0xffffff), 0.28 + (1 - uncertaintyValue) * 0.32);
+        const secondary = baseColor.clone().lerp(new THREE.Color(0x0a1227), 0.68 + uncertaintyValue * 0.22);
+
+        sphereWire.material.color.copy(bright);
+        sphereWire.material.opacity = 0.72 + (1 - uncertaintyValue) * 0.2;
+        sphereWire.material.needsUpdate = true;
+
+        [...parallels, ...meridians].forEach((line) => {
+            line.material.color.copy(bright);
+            line.material.opacity = 0.28 + (1 - uncertaintyValue) * 0.24;
+            line.material.needsUpdate = true;
+        });
+
+        if (viewer) {
+            const glowCss = toCssRgba(bright, 0.3 + (1 - uncertaintyValue) * 0.4);
+            const coreCss = toCssRgba(secondary, 0.22 + (1 - uncertaintyValue) * 0.28);
+            viewer.style.background = `radial-gradient(circle at center, ${coreCss}, rgba(7, 12, 24, 0.9))`;
+            viewer.style.boxShadow = `0 0 ${55 + (1 - uncertaintyValue) * 90}px ${glowCss}`;
+        }
+    }
+
+    function formatNumber(value) {
+        if (typeof value !== "number" || Number.isNaN(value)) {
+            return "-";
+        }
+        if (Math.abs(value) >= 100) {
+            return value.toFixed(0);
+        }
+        if (Math.abs(value) >= 10) {
+            return value.toFixed(1);
+        }
+        return value.toFixed(2);
+    }
+
+    function computeScale(radius) {
+        if (typeof radius !== "number" || Number.isNaN(radius) || radius <= 0) {
+            return 1;
+        }
+        const clamped = Math.min(Math.max(radius, 0.3), 40);
+        const normalized = Math.sqrt(clamped / 40);
+        return 0.82 + normalized * 0.45;
+    }
+
+    function selectPlanet(index, sourceRow) {
+        const rowData = payload[index] || null;
+        rows.forEach((row) => row.classList.toggle("active", row === sourceRow));
+
+        const name = rowData && rowData.name ? rowData.name : (sourceRow ? sourceRow.getAttribute("data-name") : "Planeta");
+        if (nameField) {
+            nameField.textContent = name || "Planeta";
+        }
+
+        const radius = rowData ? rowData.radius : null;
+        const prediction = rowData ? rowData.prediction : null;
+        const uncertainty = rowData ? rowData.uncertainty : null;
+
+        radiusField.textContent = formatNumber(radius);
+        predictionField.textContent = typeof prediction === "number" && !Number.isNaN(prediction)
+            ? prediction.toFixed(2)
+            : "-";
+        uncertaintyField.textContent = typeof uncertainty === "number" && !Number.isNaN(uncertainty)
+            ? uncertainty.toFixed(2)
+            : "-";
+
+        if (hasThree) {
+            targetScale = computeScale(radius);
+            rotationSpeed = 0.006 + clamp01(prediction ?? 0.5, 0.5) * 0.008;
+            updateViewerColors(prediction ?? 0, uncertainty);
+        }
+    }
+
+    if (hasThree) {
+        setupScene();
+    }
+
+    rows.forEach((row, fallbackIndex) => {
+        const index = Number.isInteger(Number(row.dataset.index))
+            ? Number(row.dataset.index)
+            : fallbackIndex;
+        row.dataset.index = index;
+        row.addEventListener("click", () => selectPlanet(index, row));
+    });
+
+    const firstRow = rows[0];
+    selectPlanet(Number(firstRow.dataset.index) || 0, firstRow);
+})();
