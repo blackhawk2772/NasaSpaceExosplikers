@@ -250,3 +250,35 @@ tbody tr:hover {
     background: rgba(56, 189, 248, 0.3);
     transform: translateY(-1px);
 }
+
+.form-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    width: 100%;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 220px;
+}
+
+.form-field select,
+.form-field input[type="file"] {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 10px;
+    padding: 0.6rem 0.75rem;
+    color: var(--text-primary);
+    font-family: inherit;
+}
+
+.form-field select:focus,
+.form-field input[type="file"]:focus {
+    outline: none;
+    border-color: rgba(56, 189, 248, 0.6);
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+}
+

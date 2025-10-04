@@ -21,7 +21,7 @@ from werkzeug.utils import secure_filename
 BASE_DIR = Path(__file__).resolve().parent
 UPLOAD_DIR = BASE_DIR / "uploads"
 PROCESSED_DIR = BASE_DIR / "processed"
-SCRIPT_PATH = BASE_DIR / "scripts" / "test.py"
+SCRIPT_PATH = BASE_DIR / "scripts" / "model_selector.py"
 
 UPLOAD_DIR.mkdir(exist_ok=True)
 PROCESSED_DIR.mkdir(exist_ok=True)
@@ -31,6 +31,7 @@ app.config["UPLOAD_FOLDER"] = str(UPLOAD_DIR)
 app.secret_key = "space-apps-secret"
 
 ALLOWED_EXTENSIONS = {"csv"}
+MODEL_CHOICES = ("TESS", "KEPLER", "K2")
 MAX_ROWS = 200
 
 COLUMN_DEFS = [
@@ -52,13 +53,17 @@ def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def run_inference(csv_path: Path) -> Path:
+def run_inference(csv_path: Path, model_name: str) -> Path:
     if not SCRIPT_PATH.exists():
-        raise FileNotFoundError("Model script scripts/test.py not found")
+        raise FileNotFoundError("model script scripts/model_selector.py not found")
+
+    model_key = model_name.upper()
+    if model_key not in MODEL_CHOICES:
+        raise ValueError(f"Modelo no soportado: {model_name}")
 
     with TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
-        command = [sys.executable, str(SCRIPT_PATH), str(csv_path)]
+        command = [sys.executable, str(SCRIPT_PATH), str(csv_path), model_key]
         result = subprocess.run(
             command,
             cwd=tmp_path,
@@ -147,6 +152,8 @@ def index():
         "truncated": False,
         "processed_file": None,
         "max_rows": MAX_ROWS,
+        "models": MODEL_CHOICES,
+        "selected_model": MODEL_CHOICES[0],
     }
 
     if request.method == "POST":
@@ -159,6 +166,12 @@ def index():
             flash("El archivo debe ser un CSV.")
             return redirect(url_for("index"))
 
+        selected_model = (request.form.get("model_name") or MODEL_CHOICES[0]).upper()
+        context["selected_model"] = selected_model
+        if selected_model not in MODEL_CHOICES:
+            flash("Modelo seleccionado no válido.")
+            return render_template("index.html", **context)
+
         sanitized_name = secure_filename(uploaded_file.filename)
         unique_name = (
             f"{uuid.uuid4().hex}_{sanitized_name}" if sanitized_name else f"{uuid.uuid4().hex}.csv"
@@ -167,18 +180,18 @@ def index():
         uploaded_file.save(saved_path)
 
         try:
-            processed_path = run_inference(saved_path)
+            processed_path = run_inference(saved_path, selected_model)
             dataframe = pd.read_csv(processed_path)
         except Exception as exc:  # noqa: BLE001 - surface error to user
             flash(f"Error procesando el archivo: {exc}")
-            return redirect(url_for("index"))
+            return render_template("index.html", **context)
 
         truncated = len(dataframe) > MAX_ROWS
         display_df = dataframe.head(MAX_ROWS)
 
-        dedupe_keys = [col for col in ('pl_name', 'hostname', 'k2_name') if col in display_df.columns]
+        dedupe_keys = [col for col in ("pl_name", "hostname", "k2_name") if col in display_df.columns]
         if dedupe_keys:
-            display_df = display_df.drop_duplicates(subset=dedupe_keys, keep='first')
+            display_df = display_df.drop_duplicates(subset=dedupe_keys, keep="first")
 
         table_columns, table_data = build_table(display_df)
         visual_payload = build_visual_payload(display_df)
@@ -203,5 +216,17 @@ def download_processed(filename: str):
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
+
+
+
+
+
+
+
+
+
+
 
 

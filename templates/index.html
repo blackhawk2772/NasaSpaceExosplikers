@@ -20,8 +20,20 @@
 
         <section class="card">
             <form class="upload-form" method="post" enctype="multipart/form-data">
-                <label for="data_file">Archivo CSV de entrada</label>
-                <input id="data_file" name="data_file" type="file" accept=".csv" required>
+                <div class="form-controls">
+                <div class="form-field">
+                    <label for="data_file">Archivo CSV de entrada</label>
+                    <input id="data_file" name="data_file" type="file" accept=".csv" required>
+                </div>
+                <div class="form-field">
+                    <label for="model_name">Modelo</label>
+                    <select id="model_name" name="model_name" required>
+                        {% for model in models %}
+                        <option value="{{ model }}"{% if model == selected_model %} selected{% endif %}>{{ model }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
                 <button type="submit">Procesar archivo</button>
             </form>
             {% with messages = get_flashed_messages() %}
@@ -96,5 +108,6 @@
     </main>
 </body>
 </html>
+
 
 
