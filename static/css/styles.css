@@ -158,17 +158,20 @@ tbody tr:hover {
 }
 
 #planet-viewer {
+    --viewer-core: rgba(59, 130, 246, 0.18);
+    --viewer-halo: rgba(56, 189, 248, 0.35);
     width: 320px;
     height: 320px;
     border-radius: 12px;
-    background: radial-gradient(circle at center, rgba(59, 130, 246, 0.18), rgba(14, 24, 52, 0.45));
+    background: radial-gradient(circle at center, var(--viewer-core), rgba(14, 24, 52, 0.55));
     position: relative;
-    box-shadow: 0 0 40px rgba(56, 189, 248, 0.35);
+    box-shadow: 0 0 40px var(--viewer-halo);
+    transition: box-shadow 0.3s ease, background 0.3s ease;
 }
 
 .planet-details {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 0.75rem;
     width: 100%;
 }
@@ -215,6 +218,7 @@ tbody tr:hover {
         grid-template-columns: 1fr;
     }
 }
+
 .download-link {
     display: inline-flex;
     align-items: center;

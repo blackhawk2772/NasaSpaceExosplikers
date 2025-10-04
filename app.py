@@ -110,25 +110,29 @@ def build_table(df: pd.DataFrame):
 
 def build_visual_payload(df: pd.DataFrame):
     visual_data = []
-    for row in df.itertuples(index=False):
+    for index, row in enumerate(df.itertuples(index=False)):
         planet_name = getattr(row, "pl_name", None)
+        host_name = getattr(row, "hostname", None)
         radius = getattr(row, "pl_rade", None)
         prediction = getattr(row, "Prediction", None)
-        if planet_name is None:
-            continue
-        try:
-            radius_value = float(radius)
-        except (TypeError, ValueError):
-            radius_value = None
-        try:
-            pred_value = float(prediction)
-        except (TypeError, ValueError):
-            pred_value = None
+        uncertainty = getattr(row, "Uncertainty", None)
+
+        label = str(planet_name) if planet_name not in (None, "") else f"Planeta {index + 1}"
+
+        def _to_float(value):
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return None
+
         visual_data.append(
             {
-                "name": str(planet_name),
-                "radius": radius_value,
-                "prediction": pred_value,
+                "index": index,
+                "name": label,
+                "host": str(host_name) if host_name not in (None, "") else None,
+                "radius": _to_float(radius),
+                "prediction": _to_float(prediction),
+                "uncertainty": _to_float(uncertainty),
             }
         )
     return visual_data
@@ -195,3 +199,4 @@ def download_processed(filename: str):
 
 if __name__ == "__main__":
     app.run(debug=True)
+
