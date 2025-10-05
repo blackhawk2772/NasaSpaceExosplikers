@@ -255,6 +255,50 @@ tbody tr:hover {
     justify-content: center;
 }
 
+
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    background: rgba(2, 6, 23, 0.78);
+    backdrop-filter: blur(6px);
+    z-index: 2000;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+}
+
+.loading-overlay.visible {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.loading-overlay .loading-spinner {
+    width: 3.75rem;
+    height: 3.75rem;
+    border-radius: 50%;
+    border: 0.35rem solid rgba(148, 163, 184, 0.35);
+    border-top-color: var(--accent);
+    animation: spin 1s linear infinite;
+}
+
+.loading-overlay p {
+    margin: 0;
+    font-size: 1.05rem;
+    letter-spacing: 0.03em;
+    color: var(--text-primary);
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 @media (max-width: 960px) {
     .results-layout {
         flex-direction: column;
