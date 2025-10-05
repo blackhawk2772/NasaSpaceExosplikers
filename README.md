@@ -1,6 +1,6 @@
 # EXOSPLIKERS - NASA Space Apps Challenge
 
-Welcome to the EXOSPLIKERS repository for the 2024 NASA Space Apps Challenge. Our project combines machine learning pipelines with an interactive web experience to help researchers and enthusiasts explore potential exoplanet candidates coming from three major space missions: **Kepler**, **K2**, and **TESS**.
+Welcome to the EXOSPLIKERS repository for the 2025 NASA Space Apps Challenge. Our project combines machine learning pipelines with an interactive web experience to help researchers and enthusiasts explore potential exoplanet candidates coming from three major space missions: **Kepler**, **K2**, and **TESS**.
 
 The core of the solution is an XGBoost-based classifier trained separately for each mission. Users can upload catalog data through a Flask web application; the backend routes the dataset to the appropriate model, generates predictions, and surfaces the results as a rich table and 3D visual preview.
 
