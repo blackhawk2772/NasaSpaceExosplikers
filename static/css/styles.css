@@ -209,6 +209,52 @@ tbody tr:hover {
     font-size: 1rem;
 }
 
+
+.prediction-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.3rem 0.85rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    background: rgba(148, 163, 184, 0.3);
+    color: #e2e8f0;
+    min-width: 7rem;
+    border: 1px solid transparent;
+}
+
+.prediction-badge.prediction-candidate {
+    background: rgba(250, 204, 21, 0.85);
+    color: #422006;
+    border-color: rgba(234, 179, 8, 0.7);
+}
+
+.prediction-badge.prediction-confirmed {
+    background: rgba(34, 197, 94, 0.85);
+    color: #022c16;
+    border-color: rgba(22, 163, 74, 0.7);
+}
+
+.prediction-badge.prediction-false-positive {
+    background: rgba(239, 68, 68, 0.85);
+    color: #7f1d1d;
+    border-color: rgba(220, 38, 38, 0.7);
+}
+
+.prediction-badge.prediction-unknown {
+    background: rgba(148, 163, 184, 0.3);
+    color: #e2e8f0;
+    border-color: rgba(148, 163, 184, 0.3);
+}
+
+.table-panel td .prediction-badge {
+    width: 100%;
+    justify-content: center;
+}
+
 @media (max-width: 960px) {
     .results-layout {
         flex-direction: column;

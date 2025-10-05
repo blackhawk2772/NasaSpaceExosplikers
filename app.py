@@ -1,4 +1,4 @@
-﻿import json
+import json
 import shutil
 import subprocess
 import sys
@@ -34,12 +34,18 @@ ALLOWED_EXTENSIONS = {"csv"}
 MODEL_CHOICES = ("TESS", "KEPLER", "K2")
 MAX_ROWS = 200
 
+STATUS_CONFIG = {
+    0: {"label": "Candidate", "css_class": "prediction-candidate"},
+    1: {"label": "Confirmed", "css_class": "prediction-confirmed"},
+    2: {"label": "False Positive", "css_class": "prediction-false-positive"},
+}
+DEFAULT_STATUS = {"label": "Unknown", "css_class": "prediction-unknown"}
+
 COLUMN_DEFS = [
     ("pl_name", "Planet"),
     ("hostname", "Host Star"),
     ("disposition", "Disposition"),
-    ("Prediction", "Prediction"),
-    ("Uncertainty", "Uncertainty"),
+    ("PredictionLabel", "Prediction"),
     ("pl_orbper", "Orbital Period [days]"),
     ("pl_rade", "Radius [Earth radii]"),
     ("pl_masse", "Mass [Earth masses]"),
@@ -53,13 +59,35 @@ def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def resolve_prediction_status(value):
+    try:
+        code = int(round(float(value)))
+    except (TypeError, ValueError):
+        return None, DEFAULT_STATUS
+    status = STATUS_CONFIG.get(code)
+    if status is None:
+        return None, DEFAULT_STATUS
+    return code, status
+
+
+def status_as_series(value):
+    code, status = resolve_prediction_status(value)
+    return pd.Series(
+        {
+            "PredictionCode": code,
+            "PredictionLabel": status["label"],
+            "PredictionClass": status["css_class"],
+        }
+    )
+
+
 def run_inference(csv_path: Path, model_name: str) -> Path:
     if not SCRIPT_PATH.exists():
-        raise FileNotFoundError("model script scripts/model_selector.py not found")
+        raise FileNotFoundError("Model script scripts/model_selector.py not found")
 
     model_key = model_name.upper()
     if model_key not in MODEL_CHOICES:
-        raise ValueError(f"Modelo no soportado: {model_name}")
+        raise ValueError(f"Unsupported model: {model_name}")
 
     with TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
@@ -108,6 +136,10 @@ def build_table(df: pd.DataFrame):
             key = column["key"]
             value = getattr(row, key, None)
             record[key] = format_value(value)
+        if hasattr(row, "PredictionClass"):
+            record["PredictionClass"] = getattr(row, "PredictionClass")
+        if hasattr(row, "PredictionCode"):
+            record["PredictionCode"] = getattr(row, "PredictionCode")
         records.append(record)
 
     return table_columns, records
@@ -119,10 +151,11 @@ def build_visual_payload(df: pd.DataFrame):
         planet_name = getattr(row, "pl_name", None)
         host_name = getattr(row, "hostname", None)
         radius = getattr(row, "pl_rade", None)
-        prediction = getattr(row, "Prediction", None)
-        uncertainty = getattr(row, "Uncertainty", None)
+        prediction_code = getattr(row, "PredictionCode", None)
+        prediction_label = getattr(row, "PredictionLabel", None)
+        prediction_class = getattr(row, "PredictionClass", None)
 
-        label = str(planet_name) if planet_name not in (None, "") else f"Planeta {index + 1}"
+        label = str(planet_name) if planet_name not in (None, "") else f"Planet {index + 1}"
 
         def _to_float(value):
             try:
@@ -130,14 +163,28 @@ def build_visual_payload(df: pd.DataFrame):
             except (TypeError, ValueError):
                 return None
 
+        def _to_int(value):
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return None
+
+        status_label = (
+            str(prediction_label) if prediction_label not in (None, "") else DEFAULT_STATUS["label"]
+        )
+        status_class = (
+            str(prediction_class) if prediction_class not in (None, "") else DEFAULT_STATUS["css_class"]
+        )
+
         visual_data.append(
             {
                 "index": index,
                 "name": label,
                 "host": str(host_name) if host_name not in (None, "") else None,
                 "radius": _to_float(radius),
-                "prediction": _to_float(prediction),
-                "uncertainty": _to_float(uncertainty),
+                "prediction_code": _to_int(prediction_code),
+                "prediction_label": status_label,
+                "prediction_class": status_class,
             }
         )
     return visual_data
@@ -159,17 +206,17 @@ def index():
     if request.method == "POST":
         uploaded_file = request.files.get("data_file")
         if uploaded_file is None or uploaded_file.filename == "":
-            flash("Por favor selecciona un archivo CSV.")
+            flash("Please choose a CSV file.")
             return redirect(url_for("index"))
 
         if not allowed_file(uploaded_file.filename):
-            flash("El archivo debe ser un CSV.")
+            flash("Only CSV files are supported.")
             return redirect(url_for("index"))
 
         selected_model = (request.form.get("model_name") or MODEL_CHOICES[0]).upper()
         context["selected_model"] = selected_model
         if selected_model not in MODEL_CHOICES:
-            flash("Modelo seleccionado no válido.")
+            flash("Invalid model selected.")
             return render_template("index.html", **context)
 
         sanitized_name = secure_filename(uploaded_file.filename)
@@ -183,15 +230,23 @@ def index():
             processed_path = run_inference(saved_path, selected_model)
             dataframe = pd.read_csv(processed_path)
         except Exception as exc:  # noqa: BLE001 - surface error to user
-            flash(f"Error procesando el archivo: {exc}")
+            flash(f"Error processing the file: {exc}")
             return render_template("index.html", **context)
 
         truncated = len(dataframe) > MAX_ROWS
-        display_df = dataframe.head(MAX_ROWS)
+        display_df = dataframe.head(MAX_ROWS).copy()
 
         dedupe_keys = [col for col in ("pl_name", "hostname", "k2_name") if col in display_df.columns]
         if dedupe_keys:
-            display_df = display_df.drop_duplicates(subset=dedupe_keys, keep="first")
+            display_df = display_df.drop_duplicates(subset=dedupe_keys, keep="first").copy()
+
+        if "Prediction" in display_df.columns:
+            status_df = display_df["Prediction"].apply(status_as_series)
+            display_df = pd.concat([display_df, status_df], axis=1)
+        else:
+            display_df["PredictionCode"] = None
+            display_df["PredictionLabel"] = DEFAULT_STATUS["label"]
+            display_df["PredictionClass"] = DEFAULT_STATUS["css_class"]
 
         table_columns, table_data = build_table(display_df)
         visual_payload = build_visual_payload(display_df)
@@ -216,17 +271,3 @@ def download_processed(filename: str):
 
 if __name__ == "__main__":
     app.run(debug=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -3,7 +3,6 @@
     const nameField = document.getElementById("planet-name");
     const radiusField = document.getElementById("planet-radius");
     const predictionField = document.getElementById("planet-prediction");
-    const uncertaintyField = document.getElementById("planet-uncertainty");
     const rows = Array.from(document.querySelectorAll(".planet-row"));
     const payload = Array.isArray(window.PLANETS_PAYLOAD) ? window.PLANETS_PAYLOAD : [];
 
@@ -24,16 +23,16 @@
     const LOOP_RADIUS = 0.82;
     const SEGMENTS = 200;
 
-    let rotationSpeed = 0.01;
+    const STATUS_STYLES = {
+        0: { hex: 0xfacc15, rotation: 0.007 },
+        1: { hex: 0x22c55e, rotation: 0.01 },
+        2: { hex: 0xef4444, rotation: 0.008 },
+        default: { hex: 0x38bdf8, rotation: 0.009 },
+    };
+
+    let rotationSpeed = STATUS_STYLES.default.rotation;
     let targetScale = 1;
     let currentScale = 1;
-
-    function clamp01(value, fallback) {
-        if (typeof value !== "number" || Number.isNaN(value)) {
-            return fallback;
-        }
-        return Math.min(Math.max(value, 0), 1);
-    }
 
     function toCssRgba(color, alpha) {
         const [r, g, b] = color
@@ -187,36 +186,39 @@
         render();
     }
 
-    function updateViewerColors(prediction, uncertainty) {
+    function getStatusConfig(code) {
+        if (Object.prototype.hasOwnProperty.call(STATUS_STYLES, code)) {
+            return STATUS_STYLES[code];
+        }
+        return STATUS_STYLES.default;
+    }
+
+    function updateViewerAppearance(statusCode) {
         if (!hasThree) {
             return;
         }
 
-        const baseGreen = new THREE.Color(0x2ddf85);
-        const baseRed = new THREE.Color(0xff5d5d);
-        const baseColor = (typeof prediction === "number" && prediction >= 0.5) ? baseGreen : baseRed;
-        const uncertaintyValue = clamp01(uncertainty, 0.5);
-
-        const accentColor = baseColor.clone().lerp(new THREE.Color(0xffffff), 0.28 + (1 - uncertaintyValue) * 0.32);
-        const secondaryColor = baseColor.clone().lerp(new THREE.Color(0x081126), 0.72 + uncertaintyValue * 0.2);
+        const config = getStatusConfig(statusCode);
+        const baseColor = new THREE.Color(config.hex);
+        const accentColor = baseColor.clone().lerp(new THREE.Color(0xffffff), 0.35);
+        const secondaryColor = baseColor.clone().lerp(new THREE.Color(0x081126), 0.65);
 
         wireframe.material.color.copy(accentColor);
-        wireframe.material.opacity = 0.68 + (1 - uncertaintyValue) * 0.2;
+        wireframe.material.opacity = 0.82;
         wireframe.material.needsUpdate = true;
 
         overlayLoops.forEach((loop, index) => {
             const material = loop.material;
-            const emphasis = index % 4 === 0 ? 0.05 : 0;
             material.color.copy(accentColor);
-            material.opacity = 0.22 + (1 - uncertaintyValue) * (0.22 + emphasis);
+            material.opacity = 0.26 + (index % 4 === 0 ? 0.12 : 0);
             material.needsUpdate = true;
         });
 
         if (viewer) {
-            const haloCss = toCssRgba(accentColor, 0.26 + (1 - uncertaintyValue) * 0.38);
-            const coreCss = toCssRgba(secondaryColor, 0.2 + (1 - uncertaintyValue) * 0.28);
+            const haloCss = toCssRgba(baseColor.clone().lerp(new THREE.Color(0xffffff), 0.1), 0.5);
+            const coreCss = toCssRgba(secondaryColor, 0.55);
             viewer.style.background = `radial-gradient(circle at center, ${coreCss}, rgba(8, 13, 27, 0.9))`;
-            viewer.style.boxShadow = `0 0 ${55 + (1 - uncertaintyValue) * 95}px ${haloCss}`;
+            viewer.style.boxShadow = `0 0 90px ${haloCss}`;
         }
     }
 
@@ -246,27 +248,38 @@
         const rowData = payload[index] || null;
         rows.forEach((row) => row.classList.toggle("active", row === sourceRow));
 
-        const name = rowData && rowData.name ? rowData.name : (sourceRow ? sourceRow.getAttribute("data-name") : "Planeta");
+        const fallbackName = sourceRow ? sourceRow.getAttribute("data-name") : "Planet";
+        const name = rowData && rowData.name ? rowData.name : fallbackName;
         if (nameField) {
-            nameField.textContent = name || "Planeta";
+            nameField.textContent = name || "Planet";
         }
 
         const radius = rowData ? rowData.radius : null;
-        const prediction = rowData ? rowData.prediction : null;
-        const uncertainty = rowData ? rowData.uncertainty : null;
+        const predictionCode = rowData ? rowData.prediction_code : null;
+        const predictionLabel = rowData ? rowData.prediction_label : null;
+        const predictionClass = rowData ? rowData.prediction_class : null;
 
         radiusField.textContent = formatNumber(radius);
-        predictionField.textContent = typeof prediction === "number" && !Number.isNaN(prediction)
-            ? prediction.toFixed(2)
-            : "-";
-        uncertaintyField.textContent = typeof uncertainty === "number" && !Number.isNaN(uncertainty)
-            ? uncertainty.toFixed(2)
-            : "-";
+
+        if (predictionField) {
+            const classes = ["prediction-badge"];
+            if (predictionClass) {
+                classes.push(predictionClass);
+            }
+            predictionField.className = classes.join(" ");
+            predictionField.textContent = predictionLabel || "Unknown";
+            if (predictionCode !== null && predictionCode !== undefined) {
+                predictionField.dataset.code = String(predictionCode);
+            } else {
+                delete predictionField.dataset.code;
+            }
+        }
 
         if (hasThree) {
             targetScale = computeScale(radius);
-            rotationSpeed = 0.006 + clamp01(prediction ?? 0.5, 0.5) * 0.008;
-            updateViewerColors(prediction ?? 0, uncertainty);
+            const config = getStatusConfig(predictionCode);
+            rotationSpeed = config.rotation;
+            updateViewerAppearance(predictionCode);
         }
     }
 
