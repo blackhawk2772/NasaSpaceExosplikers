@@ -300,6 +300,7 @@
         comparisonRatio.textContent = `Radius is ${rounded}× Earth's radius (~${kmDisplay} km).`;
 
         comparisonPanel.hidden = !earthComparisonEnabled;
+        compareButton.setAttribute("aria-pressed", earthComparisonEnabled ? "true" : "false");
     }
 
     function toggleEarthComparison() {

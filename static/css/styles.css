@@ -233,9 +233,15 @@ tbody tr:hover {
     gap: 1.5rem;
 }
 
+.earth-comparison__item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 .earth-comparison__planet,
 .earth-comparison__earth {
-    position: relative;
     border-radius: 50%;
     background: linear-gradient(145deg, rgba(59, 130, 246, 0.85), rgba(5, 15, 40, 0.9));
     box-shadow: 0 0 25px rgba(56, 189, 248, 0.4);
@@ -251,10 +257,6 @@ tbody tr:hover {
 }
 
 .earth-comparison__label {
-    position: absolute;
-    bottom: -1.6rem;
-    left: 50%;
-    transform: translateX(-50%);
     font-size: 0.8rem;
     color: var(--text-secondary);
     text-transform: uppercase;
