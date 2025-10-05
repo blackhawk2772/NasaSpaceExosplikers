@@ -41,6 +41,24 @@ STATUS_CONFIG = {
 }
 DEFAULT_STATUS = {"label": "Unknown", "css_class": "prediction-unknown"}
 
+MISSION_DESCRIPTIONS = {
+    "KEPLER": [
+        "Kepler Mission (2009–2018): NASA's Kepler telescope was designed to discover Earth-like exoplanets by monitoring the brightness of over 150,000 stars in a fixed patch of the sky.",
+        "Using the transit method, it detected dips in starlight caused by planets crossing in front of their host stars and revolutionized exoplanet science with thousands of discoveries.",
+        "Kepler showed that planets are commonplace throughout the galaxy."
+    ],
+    "K2": [
+        "K2 Mission (2014–2018): After two of Kepler's reaction wheels failed, the telescope was repurposed for the K2 mission using solar pressure to maintain pointing stability.",
+        "K2 observed fields along the ecliptic in roughly 80-day campaigns, focusing on nearby bright stars, young stars, and clusters.",
+        "It continued to apply the transit method and revealed hundreds of additional exoplanets."
+    ],
+    "TESS": [
+        "TESS Mission (2018–present): The Transiting Exoplanet Survey Satellite is an all-sky survey designed to find exoplanets around the brightest nearby stars.",
+        "Like Kepler, it uses the transit method, but its wide coverage concentrates on stars within a few hundred light-years, making discovered planets easier to follow up.",
+        "TESS has already discovered thousands of exoplanet candidates and continues to expand the census of nearby planetary systems."
+    ],
+}
+
 COLUMN_DEFS = [
     ("pl_name", "Planet"),
     ("hostname", "Host Star"),
@@ -228,6 +246,7 @@ def index():
         "max_rows": MAX_ROWS,
         "models": MODEL_CHOICES,
         "selected_model": MODEL_CHOICES[0],
+        "mission_description": MISSION_DESCRIPTIONS.get(MODEL_CHOICES[0], []),
     }
 
     if request.method == "POST":
@@ -242,6 +261,7 @@ def index():
 
         selected_model = (request.form.get("model_name") or MODEL_CHOICES[0]).upper()
         context["selected_model"] = selected_model
+        context["mission_description"] = MISSION_DESCRIPTIONS.get(selected_model, [])
         if selected_model not in MODEL_CHOICES:
             flash("Invalid model selected.")
             return render_template("index.html", **context)
@@ -285,6 +305,7 @@ def index():
                 "truncated": truncated,
                 "processed_file": processed_path.name,
                 "visual_payload": json.dumps(visual_payload, ensure_ascii=False),
+                "mission_description": MISSION_DESCRIPTIONS.get(selected_model, []),
             }
         )
 
