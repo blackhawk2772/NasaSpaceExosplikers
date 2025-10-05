@@ -5,6 +5,11 @@
     const predictionField = document.getElementById("planet-prediction");
     const rows = Array.from(document.querySelectorAll(".planet-row"));
     const payload = Array.isArray(window.PLANETS_PAYLOAD) ? window.PLANETS_PAYLOAD : [];
+    const compareButton = document.querySelector(".compare-earth-btn");
+    const comparisonPanel = document.querySelector(".earth-comparison");
+    const comparisonPlanet = comparisonPanel ? comparisonPanel.querySelector('[data-role="planet"]') : null;
+    const comparisonEarth = comparisonPanel ? comparisonPanel.querySelector('[data-role="earth"]') : null;
+    const comparisonRatio = comparisonPanel ? comparisonPanel.querySelector(".earth-comparison__ratio") : null;
 
     if (!rows.length) {
         return;
@@ -33,6 +38,12 @@
     let rotationSpeed = STATUS_STYLES.default.rotation;
     let targetScale = 1;
     let currentScale = 1;
+    let earthComparisonEnabled = false;
+    let lastRadiusValue = null;
+
+    const EARTH_BASE_DIAMETER = 120;
+    const EARTH_MIN_DIAMETER = 12;
+    const EARTH_RADIUS_KM = 6371;
 
     function toCssRgba(color, alpha) {
         const [r, g, b] = color
@@ -244,6 +255,73 @@
         return 0.8 + normalized * 0.45;
     }
 
+    function updateEarthComparison(radius) {
+        if (!compareButton || !comparisonPanel || !comparisonPlanet || !comparisonEarth || !comparisonRatio) {
+            return;
+        }
+
+        lastRadiusValue = radius;
+
+        const valid = typeof radius === "number" && !Number.isNaN(radius) && radius > 0;
+        if (!valid) {
+            earthComparisonEnabled = false;
+            compareButton.disabled = true;
+            compareButton.setAttribute("aria-pressed", "false");
+            compareButton.textContent = "Show Earth comparison";
+            comparisonPanel.hidden = true;
+            comparisonRatio.textContent = "Planet radius unavailable.";
+            return;
+        }
+
+        compareButton.disabled = false;
+
+        const ratio = radius;
+        let planetDiameter;
+        let earthDiameter;
+
+        if (ratio >= 1) {
+            planetDiameter = EARTH_BASE_DIAMETER;
+            earthDiameter = Math.max(EARTH_BASE_DIAMETER / ratio, EARTH_MIN_DIAMETER);
+        } else {
+            earthDiameter = EARTH_BASE_DIAMETER;
+            planetDiameter = Math.max(EARTH_BASE_DIAMETER * ratio, EARTH_MIN_DIAMETER);
+        }
+
+        comparisonPlanet.style.width = `${planetDiameter}px`;
+        comparisonPlanet.style.height = `${planetDiameter}px`;
+        comparisonEarth.style.width = `${earthDiameter}px`;
+        comparisonEarth.style.height = `${earthDiameter}px`;
+
+        const rounded = ratio >= 10 ? ratio.toFixed(1) : ratio.toFixed(2);
+        const planetRadiusKm = EARTH_RADIUS_KM * ratio;
+        const kmDisplay = planetRadiusKm >= 1000
+            ? planetRadiusKm.toLocaleString(undefined, { maximumFractionDigits: 0 })
+            : planetRadiusKm.toFixed(1);
+        comparisonRatio.textContent = `Radius is ${rounded}× Earth's radius (~${kmDisplay} km).`;
+
+        comparisonPanel.hidden = !earthComparisonEnabled;
+    }
+
+    function toggleEarthComparison() {
+        if (!comparisonPanel) {
+            return;
+        }
+        earthComparisonEnabled = !earthComparisonEnabled;
+        compareButton.setAttribute("aria-pressed", earthComparisonEnabled ? "true" : "false");
+        compareButton.textContent = earthComparisonEnabled ? "Hide Earth comparison" : "Show Earth comparison";
+
+        if (!earthComparisonEnabled) {
+            comparisonPanel.hidden = true;
+            return;
+        }
+
+        if (typeof lastRadiusValue === "number" && !Number.isNaN(lastRadiusValue) && lastRadiusValue > 0) {
+            comparisonPanel.hidden = false;
+        } else {
+            comparisonPanel.hidden = true;
+        }
+    }
+
     function selectPlanet(index, sourceRow) {
         const rowData = payload[index] || null;
         rows.forEach((row) => row.classList.toggle("active", row === sourceRow));
@@ -281,10 +359,16 @@
             rotationSpeed = config.rotation;
             updateViewerAppearance(predictionCode);
         }
+
+        updateEarthComparison(radius);
     }
 
     if (hasThree) {
         setupScene();
+    }
+
+    if (compareButton) {
+        compareButton.addEventListener("click", toggleEarthComparison);
     }
 
     rows.forEach((row, fallbackIndex) => {

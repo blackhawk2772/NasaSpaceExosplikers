@@ -185,6 +185,107 @@ tbody tr:hover {
     transition: box-shadow 0.3s ease, background 0.3s ease;
 }
 
+.compare-earth-btn {
+    align-self: stretch;
+    background: rgba(56, 189, 248, 0.18);
+    color: var(--text-primary);
+    border: 1px solid rgba(56, 189, 248, 0.45);
+    border-radius: 12px;
+    padding: 0.6rem 0.9rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.compare-earth-btn[aria-pressed="true"] {
+    background: rgba(56, 189, 248, 0.32);
+    border-color: rgba(56, 189, 248, 0.65);
+}
+
+.compare-earth-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.compare-earth-btn:not(:disabled):hover {
+    transform: translateY(-1px);
+}
+
+.earth-comparison {
+    width: 100%;
+    padding: 0.9rem;
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.78);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.earth-comparison__figure {
+    position: relative;
+    min-height: 160px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-around;
+    gap: 1.5rem;
+}
+
+.earth-comparison__planet,
+.earth-comparison__earth {
+    position: relative;
+    border-radius: 50%;
+    background: linear-gradient(145deg, rgba(59, 130, 246, 0.85), rgba(5, 15, 40, 0.9));
+    box-shadow: 0 0 25px rgba(56, 189, 248, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: width 0.3s ease, height 0.3s ease;
+}
+
+.earth-comparison__earth {
+    background: linear-gradient(145deg, rgba(34, 197, 94, 0.82), rgba(5, 40, 17, 0.88));
+    box-shadow: 0 0 18px rgba(74, 222, 128, 0.32);
+}
+
+.earth-comparison__label {
+    position: absolute;
+    bottom: -1.6rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.earth-comparison__ratio {
+    margin: 0;
+    text-align: center;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+}
+
+.mission-description {
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 14px;
+    padding: 0.9rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    width: 100%;
+}
+
+.mission-description p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
 .planet-details {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

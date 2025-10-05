@@ -99,6 +99,18 @@
                 <div class="visual-panel">
                     <h3>Featured planet</h3>
                     <div id="planet-viewer"></div>
+                    <button type="button" class="compare-earth-btn" aria-pressed="false">Show Earth comparison</button>
+                    <div class="earth-comparison" hidden>
+                        <div class="earth-comparison__figure">
+                            <div class="earth-comparison__planet" data-role="planet">
+                                <span class="earth-comparison__label">Selected planet</span>
+                            </div>
+                            <div class="earth-comparison__earth" data-role="earth">
+                                <span class="earth-comparison__label">Earth</span>
+                            </div>
+                        </div>
+                        <p class="earth-comparison__ratio" aria-live="polite"></p>
+                    </div>
                     <dl class="planet-details">
                         <div>
                             <dt>Planet</dt>
