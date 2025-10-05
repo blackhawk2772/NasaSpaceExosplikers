@@ -46,8 +46,9 @@ COLUMN_DEFS = [
     ("hostname", "Host Star"),
     ("disposition", "Disposition"),
     ("PredictionLabel", "Prediction"),
-    ("pl_orbper", "Orbital Period [days]"),
-    ("pl_rade", "Radius [Earth radii]"),
+    ("Planet Radius", "Planet Radius"),
+    ("Orbital Period", "Orbital Period"),
+    ("Stellar Radius", "Stellar Radius"),
     ("pl_masse", "Mass [Earth masses]"),
     ("pl_eqt", "Equilibrium Temp [K]"),
     ("discoverymethod", "Discovery Method"),
@@ -81,6 +82,26 @@ def status_as_series(value):
     )
 
 
+def get_row_value(row, *keys):
+    if isinstance(row, dict):
+        row_dict = row
+    else:
+        row_dict = getattr(row, "_asdict", lambda: {})()
+        if not row_dict:
+            row_dict = {}
+    for key in keys:
+        if key in row_dict:
+            value = row_dict[key]
+            if value is not None:
+                return value
+        alias = key.replace(" ", "_")
+        if alias in row_dict:
+            value = row_dict[alias]
+            if value is not None:
+                return value
+    return None
+
+
 def run_inference(csv_path: Path, model_name: str) -> Path:
     if not SCRIPT_PATH.exists():
         raise FileNotFoundError("Model script scripts/model_selector.py not found")
@@ -110,7 +131,11 @@ def run_inference(csv_path: Path, model_name: str) -> Path:
         if not generated_file.exists():
             raise FileNotFoundError("No data.csv produced by the model script")
 
-        output_path = PROCESSED_DIR / f"{uuid.uuid4().hex}_{csv_path.stem}_processed.csv"
+        mission_slug = secure_filename(model_key.lower()) or "mission"
+        source_slug = secure_filename(csv_path.stem) or "dataset"
+        suffix = uuid.uuid4().hex[:8]
+        output_filename = f"{mission_slug}-mission_{source_slug}_{suffix}.csv"
+        output_path = PROCESSED_DIR / output_filename
         shutil.copy(generated_file, output_path)
         return output_path
 
@@ -130,16 +155,18 @@ def build_table(df: pd.DataFrame):
         return str(value)
 
     records = []
-    for row in df.itertuples(index=False):
+    for row in df.to_dict(orient="records"):
         record = {}
         for column in table_columns:
             key = column["key"]
-            value = getattr(row, key, None)
+            value = get_row_value(row, key)
             record[key] = format_value(value)
-        if hasattr(row, "PredictionClass"):
-            record["PredictionClass"] = getattr(row, "PredictionClass")
-        if hasattr(row, "PredictionCode"):
-            record["PredictionCode"] = getattr(row, "PredictionCode")
+        prediction_class = get_row_value(row, "PredictionClass")
+        prediction_code = get_row_value(row, "PredictionCode")
+        if prediction_class is not None:
+            record["PredictionClass"] = prediction_class
+        if prediction_code is not None:
+            record["PredictionCode"] = prediction_code
         records.append(record)
 
     return table_columns, records
@@ -147,13 +174,13 @@ def build_table(df: pd.DataFrame):
 
 def build_visual_payload(df: pd.DataFrame):
     visual_data = []
-    for index, row in enumerate(df.itertuples(index=False)):
-        planet_name = getattr(row, "pl_name", None)
-        host_name = getattr(row, "hostname", None)
-        radius = getattr(row, "pl_rade", None)
-        prediction_code = getattr(row, "PredictionCode", None)
-        prediction_label = getattr(row, "PredictionLabel", None)
-        prediction_class = getattr(row, "PredictionClass", None)
+    for index, row in enumerate(df.to_dict(orient="records")):
+        planet_name = get_row_value(row, "pl_name")
+        host_name = get_row_value(row, "hostname")
+        radius = get_row_value(row, "Planet Radius", "pl_rade", "koi_prad")
+        prediction_code = get_row_value(row, "PredictionCode")
+        prediction_label = get_row_value(row, "PredictionLabel")
+        prediction_class = get_row_value(row, "PredictionClass")
 
         label = str(planet_name) if planet_name not in (None, "") else f"Planet {index + 1}"
 
