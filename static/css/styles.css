@@ -224,6 +224,10 @@ tbody tr:hover {
     gap: 0.75rem;
 }
 
+.earth-comparison[hidden] {
+    display: none !important;
+}
+
 .earth-comparison__figure {
     position: relative;
     min-height: 160px;

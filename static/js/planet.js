@@ -369,7 +369,13 @@
     }
 
     if (compareButton) {
+        compareButton.setAttribute("aria-pressed", "false");
+        compareButton.textContent = "Show Earth comparison";
         compareButton.addEventListener("click", toggleEarthComparison);
+    }
+
+    if (comparisonPanel) {
+        comparisonPanel.hidden = true;
     }
 
     rows.forEach((row, fallbackIndex) => {
